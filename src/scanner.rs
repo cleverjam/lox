@@ -18,7 +18,7 @@ impl<'a> Scanner<'a> {
             tokens: vec![],
             start: 0,
             current: 0,
-            line: 0,
+            line: 1,
         }
     }
 
