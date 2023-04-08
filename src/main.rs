@@ -47,8 +47,9 @@ fn read_file(args: &Args) -> Result<(), io::Error> {
             process::exit(66)
         }
         Ok(f) => {
-            let reader = BufReader::new(f);
-            let _ = Scanner::new(reader);
+            let mut reader = BufReader::new(f);
+            let scanner = Scanner::new(&mut reader);
+            scanner.scan();
         }
     }
     Ok(())
