@@ -8,6 +8,7 @@ pub struct Scanner<'a> {
     tokens: Vec<Token>,
     start: usize,
     current: usize,
+    line: usize,
 }
 
 impl<'a> Scanner<'a> {
@@ -17,33 +18,35 @@ impl<'a> Scanner<'a> {
             tokens: vec![],
             start: 0,
             current: 0,
+            line: 0,
         }
     }
 
     pub fn scan(mut self) -> Self {
         let mut buf = String::new();
-        let mut line = 1;
         loop {
-            buf.clear();
             match self.source.read_line(&mut buf) {
+                Ok(0) => {
+                    break;
+                }
                 Ok(size) => {
-                    if size == 0 {
-                        break;
-                    }
-                    print!("{}:\t {}", line, buf);
+                    print!("[{} bytes] {}:\t {}", size, self.line, buf);
+                    self.current = 0;
+                    self.start = self.current;
                 }
                 Err(_) => {
-                    println!("There was an error reading the file, line: {}", line);
+                    println!("There was an error reading the file, line: {}", self.line);
                     break;
                 }
             }
 
-            line = line + 1;
+            buf.clear();
+            self.line = self.line + 1;
         }
 
         // EOF
         self.tokens
-            .push(Token::new(TokenType::EOF, None, None, line));
+            .push(Token::new(TokenType::EOF, None, None, self.line));
         self
     }
 }
