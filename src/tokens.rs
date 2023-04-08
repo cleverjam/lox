@@ -47,18 +47,18 @@ pub enum TokenType {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Token {
+pub struct Token<'a> {
     token_type: TokenType,
-    lexeme: Option<String>,
-    literal: Option<String>,
+    lexeme: Option<&'a str>,
+    literal: Option<&'a str>,
     line: usize,
 }
 
-impl Token {
+impl<'a> Token<'a> {
     pub fn new(
         token_type: TokenType,
-        lexeme: Option<String>,
-        literal: Option<String>,
+        lexeme: Option<&'a str>,
+        literal: Option<&'a str>,
         line: usize,
     ) -> Self {
         Token {
