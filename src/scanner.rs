@@ -148,6 +148,7 @@ impl<'a> Scanner<'a> {
         self.add_token(TokenType::from(text), Some(text), None);
     }
 
+    /// Extracts a number and creates a token for it.
     fn number(&mut self) {
         while self.peek().is_ascii_digit() {
             self.advance(); // whole part
@@ -179,6 +180,7 @@ impl<'a> Scanner<'a> {
         self.file.chars().nth(self.current + 1).unwrap()
     }
 
+    /// Extracts a string and creates a token for it.
     fn string(&mut self) {
         while self.peek() != '"' && !self.cursor_done() {
             if self.peek() == '\n' {
