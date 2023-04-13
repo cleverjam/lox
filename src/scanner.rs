@@ -1,20 +1,17 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-
 use crate::tokens::{Token, TokenType};
 
 pub struct Scanner<'a> {
-    source: &'a mut BufReader<File>,
-    tokens: Vec<Token<'a>>,
+    file: &'a str,
+    pub tokens: Vec<Token<'a>>,
     start: usize,
     current: usize,
     line: usize,
 }
 
 impl<'a> Scanner<'a> {
-    pub fn new(source: &'a mut BufReader<File>) -> Scanner<'a> {
+    pub fn new(file: &'a str) -> Scanner<'a> {
         Scanner {
-            source,
+            file,
             tokens: vec![],
             start: 0,
             current: 0,
@@ -22,37 +19,19 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn scan(mut self) -> Self {
-        let mut buf = String::new();
-        loop {
-            match self.source.read_line(&mut buf) {
-                Ok(0) => {
-                    break;
-                }
-                Ok(_size) => {
-                    // print!("[{} bytes] {}:\t {}", _size, self.line, buf);
-                    self.current = 0;
-                    self.start = self.current;
-                    self.scan_tokens(&buf);
-                }
-                Err(_) => {
-                    println!("There was an error reading the file, line: {}", self.line);
-                    break;
-                }
-            }
-
-            buf.clear();
-            self.line = self.line + 1;
+    pub fn scan(&mut self) {
+        while !self.cursor_done() {
+            self.start = self.current;
+            self.scan_tokens()
         }
 
         // EOF
         self.tokens
             .push(Token::new(TokenType::EOF, None, None, self.line));
-        self
     }
 
-    fn scan_tokens(&mut self, str: &str) {
-        while let Some(c) = self.advance(str) {
+    fn scan_tokens(&mut self) {
+        while let Some(c) = self.advance() {
             match c {
                 '(' => self.add_token(TokenType::LeftParenthesis, None, None),
                 ')' => self.add_token(TokenType::RightParenthesis, None, None),
@@ -64,52 +43,63 @@ impl<'a> Scanner<'a> {
                 '+' => self.add_token(TokenType::Plus, None, None),
                 ';' => self.add_token(TokenType::Semicolon, None, None),
                 '!' => {
-                    if self.advance_if_matches(str, '=') {
+                    if self.advance_if_matches('=') {
                         self.add_token(TokenType::BangEqual, None, None)
                     } else {
                         self.add_token(TokenType::Bang, None, None)
                     }
                 }
                 '=' => {
-                    if self.advance_if_matches(str, '=') {
+                    if self.advance_if_matches('=') {
                         self.add_token(TokenType::EqualEqual, None, None)
                     } else {
                         self.add_token(TokenType::Equal, None, None)
                     }
                 }
                 '<' => {
-                    if self.advance_if_matches(str, '=') {
+                    if self.advance_if_matches('=') {
                         self.add_token(TokenType::LessEqual, None, None)
                     } else {
                         self.add_token(TokenType::Less, None, None)
                     }
                 }
                 '>' => {
-                    if self.advance_if_matches(str, '=') {
+                    if self.advance_if_matches('=') {
                         self.add_token(TokenType::GreaterEqual, None, None)
                     } else {
                         self.add_token(TokenType::Greater, None, None)
                     }
                 }
                 '/' => {
-                    if self.advance_if_matches(str, '/') {
-                        while self.peek(str) != '\n' && !self.cursor_done(str) {
-                            self.advance(str);
+                    if self.advance_if_matches('/') {
+                        while self.peek() != '\n' && !self.cursor_done() {
+                            self.advance();
                         }
                     } else {
                         self.add_token(TokenType::Slash, None, None)
                     }
                 }
                 '*' => self.add_token(TokenType::Star, None, None),
+                ' ' | '\r' | '\t' | '\n' => {
+                    break;
+                }
+                '"' => {
+                    self.string();
+                    break;
+                }
                 _ => {
+                    let c = self.file.chars().nth(self.current).unwrap();
+                    if c.is_ascii_digit() {
+                        self.number();
+                    } else if c.is_alphabetic() {
+                        self.identifier();
+                    } else {
+                        panic!("Woah woah dude.")
+                    }
                     break;
                 }
             }
         }
-    }
-    /// Returns true if the cursor is at end of line.
-    fn cursor_done(&mut self, str: &str) -> bool {
-        self.current >= str.len()
     }
 
     /// Adds a token to the instance's token vector, simplifies token creation.
@@ -119,17 +109,17 @@ impl<'a> Scanner<'a> {
     }
 
     /// Returns current character and moves cursor to the next
-    fn advance(&mut self, str: &str) -> Option<char> {
+    fn advance(&mut self) -> Option<char> {
         self.current = self.current + 1;
-        str.chars().nth(self.current - 1)
+        self.file.chars().nth(self.current - 1)
     }
 
     /// Returns true if the next char matches given char
-    fn advance_if_matches(&mut self, buf: &str, expected: char) -> bool {
-        if self.cursor_done(buf) {
+    fn advance_if_matches(&mut self, expected: char) -> bool {
+        if self.cursor_done() {
             return false;
         }
-        let c = buf.chars().nth(self.current).unwrap();
+        let c = self.file.chars().nth(self.current).unwrap();
         if c != expected {
             return false;
         }
@@ -138,93 +128,173 @@ impl<'a> Scanner<'a> {
         return true;
     }
 
+    /// Returns true if the cursor is at end of line.
+    fn cursor_done(&self) -> bool {
+        self.current >= self.file.len()
+    }
+
+    // Scans all the way until the end of a word to create a token
+    fn identifier(&mut self) {
+        while self
+            .file
+            .chars()
+            .nth(self.current)
+            .unwrap()
+            .is_alphanumeric()
+        {
+            self.advance();
+        }
+        let text = &self.file[self.start..self.current];
+        self.add_token(TokenType::Identifier, Some(text), None);
+    }
+
+    fn number(&mut self) {
+        while self.peek().is_digit(10) {
+            self.advance(); // whole part
+        }
+        if self.peek() == '.' && self.peek_next().is_digit(10) {
+            self.advance(); // decimal point
+        }
+
+        while self.peek().is_digit(10) {
+            self.advance(); // fractional part
+        }
+        let lexeme = &self.file[self.start..self.current];
+        self.add_token(TokenType::Number, Some(lexeme), None)
+    }
+
     /// Returns current value without advancing into the next character
-    fn peek(&mut self, buf: &str) -> char {
-        if self.cursor_done(buf) {
+    fn peek(&self) -> char {
+        if self.cursor_done() {
             return '\0';
         }
-        buf.chars().nth(self.current).unwrap()
+        self.file.chars().nth(self.current).unwrap()
+    }
+
+    /// Returns next value without advancing at all
+    fn peek_next(&self) -> char {
+        if self.cursor_done() {
+            return '\0';
+        }
+        self.file.chars().nth(self.current + 1).unwrap()
+    }
+
+    fn string(&mut self) {
+        while self.peek() != '"' && !self.cursor_done() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+
+        if self.cursor_done() {
+            panic!("unterminated string somewhere, figure it out.");
+        }
+
+        self.advance();
+
+        let literal = &self.file[self.start..self.current];
+        let text = &self.file[self.start + 1..self.current - 1];
+        self.add_token(TokenType::String, Some(text), Some(literal));
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::io::{BufReader, Write};
-
-    use tempfile::tempfile;
-
     use crate::scanner::Scanner;
     use crate::tokens::{Token, TokenType};
 
     #[test]
     fn it_creates_new_scanner() {
         let result = std::panic::catch_unwind(|| {
-            let file = tempfile().expect("Could not create temp file.");
-            let mut buf = BufReader::new(file);
-            let _scanner = Scanner::new(&mut buf);
+            let _scanner = Scanner::new("Some file, it does not matter.");
         });
-        assert!(!result.is_err())
+        assert!(result.is_ok())
     }
 
     #[test]
     fn it_scans_an_empty_file() {
-        let mut file = tempfile().expect("Could not create temp file.");
-        writeln!(file, "").expect("Could not write to temp file.");
-        let mut buf = BufReader::new(file);
-        let scanner = Scanner::new(&mut buf);
-        let scanner = scanner.scan();
+        let mut scanner = Scanner::new("      ");
+        scanner.scan();
         let expected = vec![Token::new(TokenType::EOF, None, None, 1)];
-        assert_eq!(scanner.tokens, expected)
+        assert_eq!(
+            scanner.tokens, expected,
+            "\n\nreceived:\n{:#?}\n\nexpected:\n{:#?}",
+            scanner.tokens, expected
+        )
     }
 
     #[test]
     fn it_ignores_comments_in_an_empty_file() {
-        let mut file = tempfile().expect("Could not create temp file.");
-        writeln!(file, "// this file has nothing but a comment")
-            .expect("Could not write to temp file.");
-        let mut buf = BufReader::new(file);
-        let scanner = Scanner::new(&mut buf);
-        let scanner = scanner.scan();
+        let mut scanner = Scanner::new("// this file has nothing but a comment");
+        scanner.scan();
         let expected = vec![Token::new(TokenType::EOF, None, None, 1)];
-        assert_eq!(scanner.tokens, expected)
+        assert_eq!(
+            scanner.tokens, expected,
+            "\n\nreceived:\n{:#?}\n\nexpected:\n{:#?}",
+            scanner.tokens, expected
+        )
     }
 
     #[test]
     fn it_scans_a_hello_world_file() {
-        let mut file = tempfile().expect("Could not create temp file.");
-        writeln!(file, "print \"hello world\";").expect("Could not write to temp file.");
-        let mut buf = BufReader::new(file);
-        let scanner = Scanner::new(&mut buf);
+        let mut scanner = Scanner::new("print \"hello world\";");
+        scanner.scan();
         let expected = vec![
-            Token::new(TokenType::Print, None, None, 1),
+            Token::new(TokenType::Print, Some("print"), None, 1),
             Token::new(
                 TokenType::String,
-                Some("hello world".into()),
-                Some("\"hello world\"".into()),
+                Some("hello world"),
+                Some("\"hello world\""),
                 1,
             ),
+            Token::new(TokenType::Semicolon, None, None, 1),
+            Token::new(TokenType::EOF, None, None, 1),
         ];
 
-        assert_eq!(scanner.tokens, expected)
+        assert_eq!(
+            scanner.tokens, expected,
+            "\n\nreceived:\n{:#?}\n\nexpected:\n{:#?}",
+            scanner.tokens, expected
+        )
+    }
+
+    #[test]
+    fn it_scans_a_number() {
+        let mut scanner = Scanner::new("12345");
+        scanner.scan();
+        let expected = vec![
+            Token::new(TokenType::Number, Some("12345"), None, 1),
+            Token::new(TokenType::EOF, None, None, 1),
+        ];
+
+        assert_eq!(
+            scanner.tokens, expected,
+            "\n\nreceived:\n{:#?}\n\nexpected:\n{:#?}",
+            scanner.tokens, expected
+        )
     }
 
     #[test]
     fn it_ignores_comments() {
-        let mut file = tempfile().expect("Could not create temp file.");
-        writeln!(file, "// this is a comment\n print \"hello world\";")
-            .expect("Could not write to temp file.");
-        let mut buf = BufReader::new(file);
-        let scanner = Scanner::new(&mut buf);
+        let mut scanner = Scanner::new("// this is a comment\n print \"hello world\";");
+        scanner.scan();
         let expected = vec![
-            Token::new(TokenType::Print, None, None, 1),
+            Token::new(TokenType::Print, Some("print"), None, 1),
             Token::new(
                 TokenType::String,
-                Some("hello world".into()),
-                Some("\"hello world\"".into()),
+                Some("hello world"),
+                Some("\"hello world\""),
                 1,
             ),
+            Token::new(TokenType::Semicolon, None, None, 1),
+            Token::new(TokenType::EOF, None, None, 1),
         ];
 
-        assert_eq!(scanner.tokens, expected)
+        assert_eq!(
+            scanner.tokens, expected,
+            "\n\nreceived:\n{:#?}\n\nexpected:\n{:#?}",
+            scanner.tokens, expected
+        )
     }
 }

@@ -1,12 +1,13 @@
-use std::{io, process};
+use std::fs::File;
+use std::io::{BufReader, Read};
+use std::process;
+
+use clap::Parser;
+
+use crate::scanner::Scanner;
 
 mod scanner;
 mod tokens;
-
-use crate::scanner::Scanner;
-use clap::Parser;
-use std::fs::File;
-use std::io::BufReader;
 
 #[derive(Parser, Debug, Default)]
 #[command(author, version, about)]
@@ -26,8 +27,9 @@ struct Args {
     #[clap(short, long, value_name = "output file", default_value = "output")]
     output: String,
 }
+pub type Error = Box<dyn std::error::Error>;
 
-fn main() {
+fn main() -> Result<(), Error> {
     let args = Args::try_parse();
     match args {
         Err(e) => {
@@ -35,12 +37,15 @@ fn main() {
             process::exit(64)
         }
         Ok(args) => {
-            let _ = read_file(&args);
+            let file_str = read_file(&args)?;
+            let mut scanner = Scanner::new(&file_str);
+            scanner.scan();
+            Ok(())
         }
     }
 }
 
-fn read_file(args: &Args) -> Result<(), io::Error> {
+fn read_file(args: &Args) -> Result<String, Error> {
     match File::open(&args.filename) {
         Err(_) => {
             println!("Fatal error opening file: {}", &args.filename);
@@ -48,9 +53,9 @@ fn read_file(args: &Args) -> Result<(), io::Error> {
         }
         Ok(f) => {
             let mut reader = BufReader::new(f);
-            let scanner = Scanner::new(&mut reader);
-            scanner.scan();
+            let mut buf = String::new();
+            let _ = reader.read_to_string(&mut buf)?;
+            Ok(buf)
         }
     }
-    Ok(())
 }
