@@ -28,7 +28,6 @@ pub enum TokenType {
     Number,
     /*Keywords*/
     And,
-    Class,
     Else,
     False,
     Fun,
@@ -38,12 +37,50 @@ pub enum TokenType {
     Or,
     Print,
     Return,
-    Super,
-    This,
     True,
     Var,
     While,
-    EOF,
+    Eof,
+}
+
+impl From<&str> for TokenType {
+    fn from(value: &str) -> Self {
+        match value {
+            "(" => TokenType::LeftParenthesis,
+            ")" => TokenType::RightParenthesis,
+            "{" => TokenType::LeftBrace,
+            "}" => TokenType::RightBrace,
+            "," => TokenType::Comma,
+            "." => TokenType::Dot,
+            "-" => TokenType::Minus,
+            "+" => TokenType::Plus,
+            ";" => TokenType::Semicolon,
+            "/" => TokenType::Slash,
+            "*" => TokenType::Star,
+            "!" => TokenType::Bang,
+            "!=" => TokenType::BangEqual,
+            "=" => TokenType::Equal,
+            "==" => TokenType::EqualEqual,
+            ">" => TokenType::Greater,
+            ">=" => TokenType::GreaterEqual,
+            "<" => TokenType::Less,
+            "<=" => TokenType::LessEqual,
+            "and" => TokenType::And,
+            "else" => TokenType::Else,
+            "false" => TokenType::False,
+            "for" => TokenType::For,
+            "fun" => TokenType::Fun,
+            "if" => TokenType::If,
+            "Nil" => TokenType::Nil,
+            "Or" => TokenType::Or,
+            "print" => TokenType::Print,
+            "return" => TokenType::Return,
+            "true" => TokenType::True,
+            "var" => TokenType::Var,
+            "while" => TokenType::While,
+            _ => TokenType::Identifier,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]

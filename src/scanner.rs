@@ -145,7 +145,7 @@ impl<'a> Scanner<'a> {
             self.advance();
         }
         let text = &self.file[self.start..self.current];
-        self.add_token(TokenType::Identifier, Some(text), None);
+        self.add_token(TokenType::from(text), Some(text), None);
     }
 
     fn number(&mut self) {
