@@ -88,7 +88,6 @@ impl<'a> Scanner<'a> {
                     break;
                 }
                 _ => {
-                    let c = self.file.chars().nth(self.current).unwrap();
                     if c.is_ascii_digit() {
                         self.number();
                     } else if c.is_alphabetic() {
