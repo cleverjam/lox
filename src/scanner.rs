@@ -27,7 +27,7 @@ impl<'a> Scanner<'a> {
 
         // EOF
         self.tokens
-            .push(Token::new(TokenType::EOF, None, None, self.line));
+            .push(Token::new(TokenType::Eof, None, None, self.line));
     }
 
     fn scan_tokens(&mut self) {
@@ -110,7 +110,8 @@ impl<'a> Scanner<'a> {
 
     /// Returns current character and moves cursor to the next
     fn advance(&mut self) -> Option<char> {
-        self.current = self.current + 1;
+        self.current += 1;
+
         self.file.chars().nth(self.current - 1)
     }
 
@@ -120,12 +121,9 @@ impl<'a> Scanner<'a> {
             return false;
         }
         let c = self.file.chars().nth(self.current).unwrap();
-        if c != expected {
-            return false;
-        }
 
         self.current += 1;
-        return true;
+        c != expected
     }
 
     /// Returns true if the cursor is at end of line.
@@ -149,14 +147,14 @@ impl<'a> Scanner<'a> {
     }
 
     fn number(&mut self) {
-        while self.peek().is_digit(10) {
+        while self.peek().is_ascii_digit() {
             self.advance(); // whole part
         }
-        if self.peek() == '.' && self.peek_next().is_digit(10) {
+        if self.peek() == '.' && self.peek_next().is_ascii_digit() {
             self.advance(); // decimal point
         }
 
-        while self.peek().is_digit(10) {
+        while self.peek().is_ascii_digit() {
             self.advance(); // fractional part
         }
         let lexeme = &self.file[self.start..self.current];
@@ -216,7 +214,7 @@ mod tests {
     fn it_scans_an_empty_file() {
         let mut scanner = Scanner::new("      ");
         scanner.scan();
-        let expected = vec![Token::new(TokenType::EOF, None, None, 1)];
+        let expected = vec![Token::new(TokenType::Eof, None, None, 1)];
         assert_eq!(
             scanner.tokens, expected,
             "\n\nreceived:\n{:#?}\n\nexpected:\n{:#?}",
@@ -228,7 +226,7 @@ mod tests {
     fn it_ignores_comments_in_an_empty_file() {
         let mut scanner = Scanner::new("// this file has nothing but a comment");
         scanner.scan();
-        let expected = vec![Token::new(TokenType::EOF, None, None, 1)];
+        let expected = vec![Token::new(TokenType::Eof, None, None, 1)];
         assert_eq!(
             scanner.tokens, expected,
             "\n\nreceived:\n{:#?}\n\nexpected:\n{:#?}",
@@ -249,7 +247,7 @@ mod tests {
                 1,
             ),
             Token::new(TokenType::Semicolon, None, None, 1),
-            Token::new(TokenType::EOF, None, None, 1),
+            Token::new(TokenType::Eof, None, None, 1),
         ];
 
         assert_eq!(
@@ -265,7 +263,7 @@ mod tests {
         scanner.scan();
         let expected = vec![
             Token::new(TokenType::Number, Some("12345"), None, 1),
-            Token::new(TokenType::EOF, None, None, 1),
+            Token::new(TokenType::Eof, None, None, 1),
         ];
 
         assert_eq!(
@@ -288,7 +286,7 @@ mod tests {
                 1,
             ),
             Token::new(TokenType::Semicolon, None, None, 1),
-            Token::new(TokenType::EOF, None, None, 1),
+            Token::new(TokenType::Eof, None, None, 1),
         ];
 
         assert_eq!(
