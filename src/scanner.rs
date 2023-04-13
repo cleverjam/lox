@@ -121,9 +121,11 @@ impl<'a> Scanner<'a> {
             return false;
         }
         let c = self.file.chars().nth(self.current).unwrap();
+        if c == expected {
+            self.current += 1;
+        }
 
-        self.current += 1;
-        c != expected
+        c == expected
     }
 
     /// Returns true if the cursor is at end of line.
