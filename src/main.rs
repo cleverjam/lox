@@ -27,6 +27,7 @@ struct Args {
     #[clap(short, long, value_name = "output file", default_value = "output")]
     output: String,
 }
+
 pub type Error = Box<dyn std::error::Error>;
 
 fn main() -> Result<(), Error> {

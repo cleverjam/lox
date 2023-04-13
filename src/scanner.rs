@@ -195,8 +195,8 @@ impl<'a> Scanner<'a> {
         self.advance();
 
         let literal = &self.file[self.start..self.current];
-        let text = &self.file[self.start + 1..self.current - 1];
-        self.add_token(TokenType::String, Some(text), Some(literal));
+        let lexeme = &self.file[self.start + 1..self.current - 1];
+        self.add_token(TokenType::String, Some(lexeme), Some(literal));
     }
 }
 
@@ -292,6 +292,24 @@ mod tests {
             Token::new(TokenType::Eof, None, None, 1),
         ];
 
+        assert_eq!(
+            scanner.tokens, expected,
+            "\n\nreceived:\n{:#?}\n\nexpected:\n{:#?}",
+            scanner.tokens, expected
+        )
+    }
+
+    #[test]
+    fn it_correctly_identifies_numeric_values_and_identifiers() {
+        let mut scanner = Scanner::new("var pi = 3.14159");
+        scanner.scan();
+        let expected = vec![
+            Token::new(TokenType::Var, Some("var"), None, 1),
+            Token::new(TokenType::Identifier, Some("pi"), None, 1),
+            Token::new(TokenType::Equal, None, None, 1),
+            Token::new(TokenType::Number, Some("3.14159"), None, 1),
+            Token::new(TokenType::Eof, None, None, 1),
+        ];
         assert_eq!(
             scanner.tokens, expected,
             "\n\nreceived:\n{:#?}\n\nexpected:\n{:#?}",

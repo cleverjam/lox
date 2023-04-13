@@ -1,4 +1,4 @@
 // A comment
 print "Hello world!";
 print "Goodbye world!";
-123456
+var pi = 123456;
